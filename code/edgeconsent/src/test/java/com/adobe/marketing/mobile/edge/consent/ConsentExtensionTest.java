@@ -1101,7 +1101,7 @@ public class ConsentExtensionTest {
 
 		// Build an Edge consent:preferences handle whose payload sets collect=y
 		final String jsonString =
-				"{ \"payload\": [ { \"collect\": { \"val\": \"y\" } } ], \"type\": \"consent:preferences\" }";
+			"{ \"payload\": [ { \"collect\": { \"val\": \"y\" } } ], \"type\": \"consent:preferences\" }";
 		extension.handleEdgeConsentPreferenceHandle(buildEdgeConsentPreferenceEvent(jsonString));
 
 		ArgumentCaptor<Event> eventCaptor = ArgumentCaptor.forClass(Event.class);
@@ -1131,13 +1131,13 @@ public class ConsentExtensionTest {
 			.thenReturn("n");
 		// Seed an existing default of "n" so the subsequent "y" default flips the effective state.
 		extension.handleConfigurationResponse(
-				buildConfigurationResponseEvent(new ConsentsBuilder().setCollect("n").buildToString())
+			buildConfigurationResponseEvent(new ConsentsBuilder().setCollect("n").buildToString())
 		);
 		Mockito.reset(mockExtensionApi);
 
 		// Now flip the default to "y" — effective collect goes n -> y
 		extension.handleConfigurationResponse(
-				buildConfigurationResponseEvent(new ConsentsBuilder().setCollect("y").buildToString())
+			buildConfigurationResponseEvent(new ConsentsBuilder().setCollect("y").buildToString())
 		);
 
 		ArgumentCaptor<Event> eventCaptor = ArgumentCaptor.forClass(Event.class);

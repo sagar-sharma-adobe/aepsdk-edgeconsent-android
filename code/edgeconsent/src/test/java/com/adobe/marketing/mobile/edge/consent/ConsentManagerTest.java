@@ -655,10 +655,7 @@ public class ConsentManagerTest {
 
 		// Subsequent "y" — lastDefinitive should still be "y" (mock continues to return "y")
 		consentManager.mergeAndPersist(new Consents(new ConsentsBuilder().setCollect("y").buildToMap()));
-		assertFalse(
-			"y -> p -> y must not fire the flag",
-			consentManager.evaluateCollectConsentTransition()
-		);
+		assertFalse("y -> p -> y must not fire the flag", consentManager.evaluateCollectConsentTransition());
 		// LAST_DEFINITIVE_COLLECT_CONSENT must NEVER have been written during this sequence
 		verify(mockNamedCollection, Mockito.never())
 			.setString(eq(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT), Mockito.anyString());
