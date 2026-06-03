@@ -766,4 +766,77 @@ public class ConsentManagerTest {
 		assertTrue("adID change should still be a state change", changed);
 		assertFalse(consentManager.evaluateCollectConsentTransition());
 	}
+
+	/**
+	 * Defensive: when the manager is constructed with a {@code null} {@link NamedCollection}
+	 * (e.g. the data-store service was unavailable), {@link ConsentManager#evaluateCollectConsentTransition()}
+	 * must not crash. The read returns {@code null}, the write is a no-op, and the flag
+	 * is still computed correctly from in-memory state.
+	 *
+	 * <p>This exercises the {@code namedCollection == null} guard in both
+	 * {@code getLastDefinitiveCollectConsent} and {@code setLastDefinitiveCollectConsent}.
+	 */
+	@Test(expected = Test.None.class)
+	public void test_evaluateCollectConsentTransition_nullNamedCollection_doesNotCrash() {
+		consentManager = new ConsentManager(null);
+		consentManager.mergeAndPersist(new Consents(new ConsentsBuilder().setCollect("y").buildToMap()));
+
+		// Read returns null (no persistence), write is a no-op.
+		assertNull(consentManager.getLastDefinitiveCollectConsent());
+		// With null persistence the "previous definitive" is null and the new collect is "y",
+		// so the transition still fires correctly from in-memory state.
+		assertTrue(consentManager.evaluateCollectConsentTransition());
+	}
+
+	/**
+	 * If the effective {@code collect.val} becomes {@code null} (e.g. a merge produces a
+	 * state with no {@code collect} key) and there is a previously persisted definitive
+	 * value, the tracker must be cleared via {@link NamedCollection#remove(String)} rather
+	 * than written. Exercises the {@code value == null} branch of
+	 * {@code setLastDefinitiveCollectConsent}.
+	 */
+	@Test
+	public void test_evaluateCollectConsentTransition_currentCollectAbsent_clearsPersistedTracker() {
+		// Persisted lastDefinitive = "y" so the value transitions to null on the next merge
+		Mockito
+			.when(mockNamedCollection.getString(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT, null))
+			.thenReturn("y");
+		// Persisted consents have only adID — no collect key at all
+		Mockito
+			.when(mockNamedCollection.getString(ConsentConstants.DataStoreKey.CONSENT_PREFERENCES, null))
+			.thenReturn(new ConsentsBuilder().setAdId("n").buildToString());
+		consentManager = new ConsentManager(mockNamedCollection);
+
+		// newCollectVal is null (no collect key); previousDefinitive is "y" → not equal → clear
+		assertFalse(consentManager.evaluateCollectConsentTransition());
+
+		verify(mockNamedCollection, times(1))
+			.remove(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT);
+		// Must NOT also write a string
+		verify(mockNamedCollection, Mockito.never())
+			.setString(eq(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT), Mockito.anyString());
+	}
+
+	/**
+	 * When both the effective {@code collect.val} AND the persisted definitive are {@code null}
+	 * — i.e. fresh manager observing only non-collect updates — the equality check returns true,
+	 * so neither {@code setString} nor {@code remove} is called. Exercises the
+	 * {@code a == null && b == null} branch of the private {@code equals} helper.
+	 */
+	@Test
+	public void test_evaluateCollectConsentTransition_bothNull_noPersistedWrite() {
+		// Mock returns null by default for LAST_DEFINITIVE_COLLECT_CONSENT (no stub needed).
+		consentManager = new ConsentManager(mockNamedCollection);
+
+		// Merge a non-collect-only consent update so the current state has no collect key
+		consentManager.mergeAndPersist(new Consents(new ConsentsBuilder().setAdId("y").buildToMap()));
+
+		assertFalse(consentManager.evaluateCollectConsentTransition());
+
+		// Neither path of setLastDefinitiveCollectConsent should be exercised
+		verify(mockNamedCollection, Mockito.never())
+			.setString(eq(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT), Mockito.anyString());
+		verify(mockNamedCollection, Mockito.never())
+			.remove(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT);
+	}
 }
