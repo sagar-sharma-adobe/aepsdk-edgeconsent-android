@@ -810,8 +810,7 @@ public class ConsentManagerTest {
 		// newCollectVal is null (no collect key); previousDefinitive is "y" → not equal → clear
 		assertFalse(consentManager.evaluateCollectConsentTransition());
 
-		verify(mockNamedCollection, times(1))
-			.remove(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT);
+		verify(mockNamedCollection, times(1)).remove(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT);
 		// Must NOT also write a string
 		verify(mockNamedCollection, Mockito.never())
 			.setString(eq(ConsentConstants.DataStoreKey.LAST_DEFINITIVE_COLLECT_CONSENT), Mockito.anyString());
